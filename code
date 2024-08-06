@@ -1,0 +1,1442 @@
+##########Load packages################################
+library(ggplot2); library(tidyverse)
+library(lubridate); library(stringr)
+library(scales); library(dplyr)
+library(forcats); library(VennDiagram)
+
+library(gtools); library(INLA)
+library(janitor); library(questionr)
+library(summarytools); library(gmodels)
+library(pROC); library(plotROC)
+library(mice); library(broom); library(broom.mixed)
+
+set.seed(500)
+
+
+#Set working directory
+setwd("xxxxxxxxx")
+
+
+### read HDSS data into R###
+diamante <- read_csv("diamante_cohort.csv")
+
+
+# compute the counts and proportion within the degree type
+table(diamante$degree)
+prop.table(table(diamante$degree))
+
+#######################explore the variables in the dataset#################################################################################
+
+# check the distribution of the year married for normality
+ggplot(data = diamante, aes(x = yr_married)) +
+  geom_histogram(aes(y = ..density..), binwidth = 0.5, fill = "#fb0f0c", color = "white") +
+  ggtitle("Distribion of age") +
+  xlab("Year Married") +
+  ylab("Density") +
+  scale_x_continuous(breaks = seq(2003, 2023, by = 1), limits = c(2003, 2023)) +
+  theme_bw()+
+  theme(axis.text.x = element_text(size = 13, colour = 'black', angle = 45, hjust = 1))
+
+
+# check the distribution of the year married for normality
+ggplot(data = diamante, aes(x = fellow_yr)) +
+  geom_histogram(aes(y = ..density..), binwidth = 0.5, fill = "#fb0f0c", color = "white") +
+  xlab("Year commenced residency") +
+  ylab("Density") +
+  scale_x_continuous(breaks = seq(2010, 2023, by = 1), limits = c(2010, 2023)) +
+  theme_bw()+
+  theme(axis.text.x = element_text(size = 13, colour = 'black', angle = 45, hjust = 1))
+
+#############################################################################################
+
+##1. Age
+
+# check the distribution of the age for normality
+ggplot(data = diamante, aes(x = age)) +
+  geom_histogram(aes(y = ..density..), binwidth = 0.5, fill = "#fb0f0c", color = "white") +
+  ggtitle("Distribion of age") +
+  xlab("Age of Participants") +
+  ylab("Density") +
+  scale_x_continuous(breaks = seq(35, 55, by = 1), limits = c(35, 55)) +
+  theme_bw()+
+  theme(axis.text.x = element_text(size = 13, colour = 'black', angle = 45, hjust = 1))
+
+# compute the mean and median age for the whole dataset
+median(diamante$age)
+mean(diamante$age)
+range(diamante$age)
+
+# Compute the mean, median and age range based on the variable 'degree'
+mean_age_by_degree <- diamante %>%
+  group_by(degree) %>%
+  summarize(mean_age = mean(age, na.rm = TRUE))
+
+median_age_by_degree <- diamante %>%
+  group_by(degree) %>%
+  summarize(median_age = median(age, na.rm = TRUE))
+
+range_age_by_degree <- diamante %>%
+  group_by(degree) %>%
+  summarize(range_age = range(age, na.rm = TRUE))
+
+# View the result
+print(mean_age_by_degree)
+print(median_age_by_degree)
+print(range_age_by_degree)
+
+
+
+##2. Sex
+
+# compute the counts and proportion of sex for the whole dataset
+
+sex_summary <- diamante %>%
+  group_by(sex) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(sex_summary)
+
+# Compute the counts and proportions of 'sex' grouped by 'degree'
+sex_summary_degree <- diamante %>%
+  group_by(degree, sex) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(sex_summary_degree)
+
+
+##3. Marital Status
+
+# compute the counts and proportion of marital status for the whole dataset
+
+married_summary <- diamante %>%
+  group_by(married) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(married_summary)
+
+# Compute the counts and proportions of 'sex' grouped by 'degree'
+married_summary_degree <- diamante %>%
+  group_by(degree, married) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(married_summary_degree)
+
+
+##.4 Family size and dependents
+
+# check the distribution of the family-size for normality
+ggplot(data = diamante, aes(x = fm_size)) +
+  geom_histogram(aes(y = ..density..), binwidth = 0.5, fill = "#fb0f0c", color = "white") +
+  ggtitle("Distribion of family size") +
+  xlab("Family of Participants") +
+  ylab("Density") +
+  scale_x_continuous(breaks = seq(0, 10, by = 1), limits = c(0, 10)) +
+  theme_bw()
+
+# compute the median and range of family size for the whole dataset
+median(diamante$fm_size, na.rm = TRUE)
+range(diamante$fm_size, na.rm = TRUE)
+
+# Compute the mean, median and age range of fmsize based on the variable 'degree'
+median_fm_size_by_degree <- diamante %>%
+  group_by(degree) %>%
+  summarize(median_fm_size = median(fm_size, na.rm = TRUE))
+
+range_fm_size_by_degree <- diamante %>%
+  group_by(degree) %>%
+  summarize(range_fm_size = range(fm_size, na.rm = TRUE))
+
+# View the result
+print(median_fm_size_by_degree)
+print(range_fm_size_by_degree)
+
+
+# compute the median and range of number of dependents for the whole dataset
+median(diamante$dependents, na.rm = TRUE)
+range(diamante$dependents, na.rm = TRUE)
+
+# Compute the mean, median and age range of dependents based on the variable 'degree'
+median_dependents_by_degree <- diamante %>%
+  group_by(degree) %>%
+  summarize(median_dependents = median(dependents, na.rm = TRUE))
+
+range_dependents_by_degree <- diamante %>%
+  group_by(degree) %>%
+  summarize(range_dependents = range(dependents, na.rm = TRUE))
+
+# View the result
+print(median_dependents_by_degree)
+print(range_dependents_by_degree)
+
+
+
+##5. Postgraduate training
+
+# 5a. compute the counts and proportion of commence_training for the whole dataset
+
+commence_training_summary <- diamante %>%
+  group_by(commence_training) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(commence_training_summary)
+
+# Compute the counts and proportions of 'commence_training' grouped by 'degree'
+commence_training_summary_degree <- diamante %>%
+  group_by(degree, commence_training) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(commence_training_summary_degree)
+
+
+########
+#selects the variables that we need for computing the complete_training variables
+pdg_complete <- diamante %>% 
+  dplyr::select(degree, fellow_status, masters_status, PhD_status) 
+
+# compute the counts and proportion of completed_training for each postgraduate degree
+
+complete_fellow_summary <- pdg_complete %>%
+  group_by(degree, fellow_status) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+complete_masters_summary <- pdg_complete %>%
+  group_by(degree, masters_status) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+complete_PhD_summary <- pdg_complete %>%
+  group_by(degree, PhD_status) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+
+print(complete_fellow_summary)
+print(complete_masters_summary)
+print(complete_PhD_summary)
+
+
+
+##create the new variable based on the selected variables
+pgd_complete <-pdg_complete %>%
+  mutate(complete_training = if_else(
+    fellow_status == "Completed training." |
+      masters_status == "Completed master's degree training" |
+      PhD_status == "Completed training.",
+    "Yes",
+    "No" ))
+
+# 5b. compute the counts and proportion of completed_training for the whole dataset
+
+complete_training_summary <- pgd_complete %>%
+  group_by(complete_training) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(complete_training_summary)
+
+# Compute the counts and proportions of 'commence_training' grouped by 'degree'
+complete_training_summary_degree <- pgd_complete %>%
+  group_by(degree, complete_training) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(complete_training_summary_degree)
+
+
+
+##6. Postgraduate training type
+
+# compute the counts and proportion of training_type for the whole dataset
+
+training_type_summary <- diamante %>%
+  group_by(training_type) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(training_type_summary)
+
+
+training_type_summary_degree <- diamante %>%
+  group_by(degree, training_type) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(training_type_summary_degree)
+
+
+
+##7. Postgraduate (fellowship)
+
+# compute the counts and proportion of fellowship for the whole dataset
+diamante$fellowship <- ifelse(is.na(diamante$fellowship), 0, diamante$fellowship) # converts the cells with NAs to 0 (no)
+
+fellowship_summary <- diamante %>%
+  group_by(fellowship) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(fellowship_summary)
+
+
+# Compute the counts and proportions of 'fellowship' grouped by 'degree'
+fellowship_summary_degree <- diamante %>%
+  group_by(degree, fellowship) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(fellowship_summary_degree)
+
+
+
+##8. Postgraduate (masters)
+
+# compute the counts and proportion of masters for the whole dataset
+diamante$masters <- ifelse(is.na(diamante$masters), 0, diamante$masters) # converts the cells with NAs to 0 (no)
+
+masters_summary <- diamante %>%
+  group_by(masters) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(masters_summary)
+
+
+# Compute the counts and proportions of 'masters' grouped by 'degree'
+masters_summary_degree <- diamante %>%
+  group_by(degree, masters) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(masters_summary_degree)
+
+
+
+##9. Postgraduate (PhD)
+
+# compute the counts and proportion of PhD for the whole dataset
+diamante$PhD <- ifelse(is.na(diamante$PhD), 0, diamante$PhD) # converts the cells with NAs to 0 (no)
+
+PhD_summary <- diamante %>%
+  group_by(PhD) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(PhD_summary)
+
+
+# Compute the counts and proportions of 'PhD' grouped by 'degree'
+PhD_summary_degree <- diamante %>%
+  group_by(degree, PhD) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(PhD_summary_degree)
+
+
+
+##10. Postgraduate (training_other)
+
+# compute the counts and proportion of training_other for the whole dataset
+diamante$training_other <- ifelse(is.na(diamante$training_other), 0, diamante$training_other) # converts the cells with NAs to 0 (no)
+
+training_other_summary <- diamante %>%
+  group_by(training_other) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(training_other_summary)
+
+
+# Compute the counts and proportions of 'training_other' grouped by 'degree'
+training_other_summary_degree <- diamante %>%
+  group_by(degree, training_other) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(training_other_summary_degree)
+
+
+
+##11. Make Venn diagram by Postgraduate training type
+
+# Prepare the data for the Venn diagram
+venn_counts <- list(
+  Fellowship = which(diamante$fellowship == 1),
+  Masters = which(diamante$masters == 1),
+  PhD = which(diamante$PhD == 1))
+
+# Define colors for the circles
+circle_colors <- c("#fb8f7e", "#a09e4b", "#9bd6e8")
+
+# Plot the Venn diagram with custom circle colors
+venn.plot <- venn.diagram(
+  x = venn_counts,
+  category.names = c("Fellowship", "Masters", "PhD"),
+  filename = NULL,
+  fill = circle_colors)  # Assign colors to circles using the 'col' argument
+
+# Display the Venn diagram
+grid.draw(venn.plot)
+
+
+
+##12. Clinical Practice
+
+# compute the counts and proportion of Current Job Role for the whole dataset
+diamante$percent_clin_pract <- ifelse(is.na(diamante$percent_clin_pract), "Not practicing", diamante$percent_clin_pract) # converts the cells with NAs to 0 (no)
+
+clin_pract_summary <- diamante %>%
+  group_by(percent_clin_pract) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(clin_pract_summary)
+
+
+# Compute the counts and proportions of 'percent_clin_pract' (Current Job Role) grouped by 'degree'
+clin_pract_summary_degree <- diamante %>%
+  group_by(degree, percent_clin_pract) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(clin_pract_summary_degree)
+
+
+
+#13. Fellowship Status
+
+# compute the counts and proportion of fellow_status for the whole dataset
+
+fellow_status_summary <- diamante %>%
+  filter(!is.na(fellow_status)) %>%  # Exclude rows with NA values in fellow_status
+  group_by(fellow_status) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(fellow_status_summary)
+
+
+# Compute the counts and proportions of 'fellow_status' grouped by 'degree'
+fellow_status_summary_degree <- diamante %>%
+  filter(!is.na(fellow_status)) %>%  # Exclude rows with NA values in fellow_status
+  group_by(degree, fellow_status) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+print(fellow_status_summary_degree)
+
+
+
+#####based on the proportions computed in 13. above, make a .CSV file 'fellowship_status' showing the proportions in each categories
+
+#read in the data for the fellowship status
+fellowship_status <- read.csv(paste0("fellowship_status.csv"), header=TRUE)
+
+
+# Create ggplot with the correct data frame
+ggplot(data = fellowship_status, aes(x = category, y = percent, fill = fill)) +
+  geom_bar(stat = "identity", width = 0.5, colour = "black") +
+  coord_flip()+
+  theme_bw()+
+  scale_fill_manual(values = c("#9ac2b8", "#9E2A2B", "#fdc7bf")) +
+  theme(axis.title = element_blank(),  # Remove axis titles
+        axis.text.x = element_text(color = "black", size = 14),  # Adjust x-axis text
+        axis.text.y = element_text(color = "black", size = 14),  # Adjust y-axis text
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom",
+        legend.text = element_text(size = 14)) +
+  scale_y_continuous(labels = scales::label_percent(), breaks = seq(0, 1, by = 0.2))+
+  labs(fill = "")
+
+
+
+##14. Make cummulative frequency curve of year of commencement and completion of fellowship/residency
+
+#a. fellow_yr (fellowship commencement year)
+####selects the variables that we need####
+CumulCurv_fellow_yr <- diamante %>% 
+  dplyr::select(sex, fellow_yr) %>% 
+  drop_na() 
+
+####create dataset with unique fellow_yr values####
+fellow_year <- plyr::count(CumulCurv_fellow_yr, "fellow_yr") 
+
+####compute the cumulative counts and percentages####
+cumcount <- cumsum(fellow_year$freq) 
+cumpercent <- (cumcount/nrow(CumulCurv_fellow_yr))*71.5
+
+####add the cummulative percent to the dataset with unique fellow_yr values####
+fellow_year <- cbind(fellow_year, cumpercent)
+
+
+#b. fellow_comp_yr (fellowship completion year)
+####selects the variables that we need####
+CumulCurv_fellow_comp_yr <- diamante %>% 
+  dplyr::select(sex, fellow_comp_yr) %>% 
+  drop_na() 
+
+####create dataset with unique fellow_yr values####
+fellow_comp_year <- plyr::count(CumulCurv_fellow_comp_yr, "fellow_comp_yr") 
+
+####compute the cumulative counts and percentages####
+cumcount <- cumsum(fellow_comp_year$freq) 
+cumpercent <- (cumcount/nrow(CumulCurv_fellow_comp_yr))*42.3
+
+####add the cummulative percent to the dataset with unique fellow_yr values####
+fellow_comp_year <- cbind(fellow_comp_year, cumpercent)
+
+
+
+####plot the cumulative frequency curve using ggplot2####
+ggplot() + 
+  geom_step(data = fellow_year, aes(x = fellow_yr, y = cumpercent, color = "Commenced"), size = 1.2) + 
+  geom_step(data = fellow_comp_year, aes(x = fellow_comp_yr, y = cumpercent, color = "Completed"), size = 1.2) + 
+  geom_hline(yintercept = 71.5, linetype = "dashed", color = "black", size = 0.7) +  # Add red dashed line at 71.5
+  geom_hline(yintercept = 42.3, linetype = "dashed", color = "grey", size = 0.7) +  # Add green dashed line at 42.3
+  theme_bw() + 
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank(), legend.position = "bottom",
+        axis.title.x = element_text(size = 16),
+        axis.title.y = element_text(size = 16),
+        axis.text.x = element_text(size = 12, colour = 'black', angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 12, colour = 'black'),
+        legend.text = element_text(size = 13),
+        legend.title = element_blank()) + 
+  scale_x_continuous(name = "Year of commencement or completion", 
+                     breaks = seq(2008, 2024, by = 1)) + 
+  scale_y_continuous(name = "Proportion commenced and completed fellowship (%)", 
+                     breaks = seq(0,100,5), limits = c(0,100)) + 
+  coord_cartesian(xlim = c(2008, 2024)) +
+  scale_color_manual(values = c("Commenced" = "#a11d95", "Completed" = "#0eac58"), 
+                     labels = c("Commenced", "Completed"))
+##save image 850 x 800
+
+
+
+##15. Make map of location of cohort members
+
+#selects the variables that we need
+location <- diamante %>% 
+  dplyr::select(migrate, migrate_country) 
+
+# Replace all the NAs in the migrate_country with 'Nigeria' since this people are still in Nigeria
+location$migrate_country <- ifelse(is.na(location$migrate_country), "Nigeria", location$migrate_country)
+
+# Count the frequency for each unique country and compute proportions
+location_count <- location %>%
+  group_by(migrate_country) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+# add new column to dataframe
+location_count <- location_count %>%
+  mutate(category = "overall")
+
+# Assuming you want to reorder based on 'Count'
+location_count <- location_count %>%
+  arrange(desc(Count))
+
+print(location_count)
+
+# Create ggplot with the correct data frame
+ggplot(data = location_count, aes(x = reorder(category, -Count), y = Proportion, fill = fct_reorder(migrate_country, Proportion))) +
+  geom_bar(stat = "identity", width = 0.6, colour = "black") +
+  coord_flip() +
+  theme_bw() +
+  theme(axis.title.x = element_blank(), axis.title.y = element_blank(), 
+        panel.grid.minor = element_blank(), panel.grid.major = element_blank(),
+        legend.position = "bottom",
+        legend.text = element_text(size = 13)) +
+  scale_y_continuous(labels = scales::label_percent()) +
+  labs(fill = "")+
+  scale_fill_brewer(palette = "RdYlGn") +
+  guides(fill = guide_legend(ncol = 11))  
+
+
+
+
+##16. Make bar-chart summarising the proportion of people who have commenced each specialty
+
+#selects the variables that we need and drop the NAs which are those who have not commenced residency training
+specialty <- diamante %>% 
+  dplyr::select(commence_training, fellow_type, fellow_status)%>% 
+  drop_na()
+
+# Filter out rows with fellow_type as 'NotAvailable'
+specialty_filtered <- specialty %>%
+  filter(fellow_type != "NotAvailable")
+
+# Count the frequency for each unique specialty and compute proportions
+specialty_prop <- specialty_filtered %>%
+  group_by(fellow_type) %>%
+  summarize(Count = n()) %>%
+  mutate(Proportion = Count / sum(Count))
+
+# Create the bar plot
+ggplot(specialty_prop, aes(x = Proportion*100, y = fellow_type)) +
+  geom_bar(stat = "identity", fill = "#fdc6bf", width = 0.6, colour = "black") +
+  labs(x = "Proportion", y = "Fellow Type") +
+  theme_bw()+
+  theme(axis.title.y = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom",
+        axis.text.y = element_text(size = 15, color = "black"),
+        axis.text.x = element_text(size = 13),
+        axis.title.x = element_text(size = 15))+ 
+  scale_x_continuous(name = "Proportion in a clinical specialty (%)", 
+                     breaks = seq(0,20,2), limits = c(0, 20)) 
+##save image 850 x 800
+
+
+
+
+##17. Compute the incidence rate of migration per person-years for the overall cohort for 2009 - 2024, then for degree type and sex
+
+#select the variables we need
+incidence_rate <- diamante %>% 
+  dplyr::select(sex, degree, migrate, migrate_yr)
+
+# Add the person_years variable based on migrate_yr
+#incidence_rate <- incidence_rate %>%
+#mutate(person_years = ifelse(is.na(migrate_yr), 16, migrate_yr - 2008))%>%
+#mutate(person_years = ifelse(person_years == 0, 0.5, person_years))
+
+# Count the frequency for each unique migrate_yr
+incidence_count <- incidence_rate %>%
+  group_by(migrate_yr) %>%
+  summarize(Count = n())
+
+#manually create dataset 'incidence_rate_total' showing year, person_yr, migration and p_yr_contri. Note that for 2008, everyone contributed 0.5 person years,
+#hence, the person_yr is 137 (i.e., 0.5 x 274). Note that 134 migrated as of 2023 and 140 had not migrated. Total person-year=3455 (140 x 15 yrs non migrated + person years contributed for those who migrated).
+#The cummulative migration incidence rate = (134/3455)*100 = 4 per 100 person-years
+#The assumption for 2009 - 2023 is that each person contributed 1-person-year for any year they are at risk (i.e., not migrated yet)
+
+#17a. Total
+
+#Read in 'incidence_rate_total' data
+incidence_rate_total <- read_csv("incidence_rate_total.csv")
+
+# Compute the incidence rate
+incidence_rate_total$incidence_rate <- (incidence_rate_total$migrations / incidence_rate_total$person_yr)*100
+
+
+# Print the updated dataset
+print(incidence_rate_total)
+
+
+
+# Plot using ggplot
+ggplot(incidence_rate_total, aes(x = year, y = incidence_rate)) +
+  geom_point(shape = 15, size = 4, colour = 'red') +
+  geom_line(size = 0.7) +
+  geom_hline(yintercept = 4, col = "red", linetype = "dashed", size = 0.7) + 
+  theme_bw()+
+  theme(panel.grid.minor = element_blank(),panel.grid.major = element_blank(),
+        axis.text.y = element_text(size = 13, color = "black"),
+        axis.text.x = element_text(size = 13, colour = 'black', angle = 45, hjust = 1),
+        axis.title.x = element_text(size = 15),
+        axis.title.y = element_text(size = 15))+ 
+  scale_x_continuous(name = "Years", 
+                     breaks = seq(2008,2023,1), limits = c(2008, 2023))+
+  scale_y_continuous(name = "Migration incidence rate (per 100 person-years)",
+                     breaks = seq(0,16,1), limits = c(0, 16))
+#save 600 by 900
+
+#17b. Sex
+
+# Split the dataset based on the variable 'sex'
+female_data <- incidence_rate[incidence_rate$sex == "Female", ]
+male_data <- incidence_rate[incidence_rate$sex == "Male", ]
+
+
+
+# Count the frequency for each unique migrate_yr for MALES
+incidence_count_male <- male_data %>%
+  group_by(migrate_yr) %>%
+  summarize(Count = n())
+
+# Count the frequency for each unique migrate_yr for FEMALES
+incidence_count_female <- female_data %>%
+  group_by(migrate_yr) %>%
+  summarize(Count = n())
+
+#manually create dataset 'incidence_rate_sex'
+
+#Read in 'incidence_rate_total' data
+incidence_rate_sex <- read_csv("incidence_rate_sex.csv")
+
+# Compute the incidence rate
+incidence_rate_sex$incidence_rate_male <- (incidence_rate_sex$migrations_m / incidence_rate_sex$person_yr_m)*100
+incidence_rate_sex$incidence_rate_female <- (incidence_rate_sex$migrations_f / incidence_rate_sex$person_yr_f)*100
+
+
+# Print the updated dataset
+print(incidence_rate_sex)
+
+
+# Plot using ggplot
+ggplot(incidence_rate_sex, aes(x = year)) +
+  geom_line(aes(y = incidence_rate_male), size = 0.7, colour = '#3182bd') +
+  geom_point(aes(y = incidence_rate_male), shape = 18, size = 4, colour = '#08519c') +
+  geom_line(aes(y = incidence_rate_female), size = 0.7, colour = '#fc8d59') +
+  geom_point(aes(y = incidence_rate_female), shape = 19, size = 4, colour = '#b30000') +
+  geom_hline(yintercept = 4, col = "red", linetype = "dashed", size = 0.7) + 
+  theme_bw()+
+  theme(panel.grid.minor = element_blank(),panel.grid.major = element_blank(),
+        axis.text.y = element_text(size = 13, color = "black"),
+        axis.text.x = element_text(size = 13, colour = 'black', angle = 45, hjust = 1),
+        axis.title.x = element_text(size = 15),
+        axis.title.y = element_text(size = 15))+ 
+  scale_x_continuous(name = "Years", 
+                     breaks = seq(2008,2023,1), limits = c(2008, 2023))+
+  scale_y_continuous(name = "Migration incidence rate (per 100 person-years)",
+                     breaks = seq(0,16,1), limits = c(0, 16))
+
+#save 600 by 900
+
+
+#17c. Degree
+
+# Split the dataset based on the variable 'degree'
+bds_data <- incidence_rate[incidence_rate$degree == "Bachelor of Dental Surgery (BDS)", ]
+mbbs_data <- incidence_rate[incidence_rate$degree == "Bachelor of Medicine, Bachelor of Surgery (MBBS)", ]
+
+
+
+# Count the frequency for each unique migrate_yr for MALES
+incidence_count_mbbs <- mbbs_data %>%
+  group_by(migrate_yr) %>%
+  summarize(Count = n())
+
+# Count the frequency for each unique migrate_yr for FEMALES
+incidence_count_bds <- bds_data %>%
+  group_by(migrate_yr) %>%
+  summarize(Count = n())
+
+#manually create dataset 'incidence_rate_sex'
+
+#Read in 'incidence_rate_total' data
+incidence_rate_degree <- read_csv("incidence_rate_degree.csv")
+
+# Compute the incidence rate
+incidence_rate_degree$incidence_rate_mbbs <- (incidence_rate_degree$migrations_mbbs / incidence_rate_degree$person_yr_mbbs)*100
+incidence_rate_degree$incidence_rate_bds <- (incidence_rate_degree$migrations_bds / incidence_rate_degree$person_yr_bds)*100
+
+
+# Print the updated dataset
+print(incidence_rate_degree)
+
+
+# Plot using ggplot
+ggplot(incidence_rate_degree, aes(x = year)) +
+  geom_line(aes(y = incidence_rate_mbbs), size = 0.7, colour = '#78c679') +
+  geom_point(aes(y = incidence_rate_mbbs), shape = 17, size = 4, colour = '#006837') +
+  geom_line(aes(y = incidence_rate_bds), size = 0.7, colour = '#f768a1') +
+  geom_point(aes(y = incidence_rate_bds), shape = 15, size = 4, colour = '#7a0177') +
+  geom_hline(yintercept = 4, col = "red", linetype = "dashed", size = 0.7) + 
+  theme_bw()+
+  theme(panel.grid.minor = element_blank(),panel.grid.major = element_blank(),
+        axis.text.y = element_text(size = 13, color = "black"),
+        axis.text.x = element_text(size = 13, colour = 'black', angle = 45, hjust = 1),
+        axis.title.x = element_text(size = 15),
+        axis.title.y = element_text(size = 15))+ 
+  scale_x_continuous(name = "Years", 
+                     breaks = seq(2008,2023,1), limits = c(2008, 2023))+
+  scale_y_continuous(name = "Migration incidence rate (per 100 person-years)",
+                     breaks = seq(0,16,1), limits = c(0, 16))
+
+#save 600 by 900
+
+
+
+##18. Make bar-chart summarising the push factors driving migration
+
+#selects the variables that we need and drop the NAs
+push_factors <- diamante %>% 
+  dplyr::select(migrate_drivers, migrate_drivers_1, migrate_drivers_2, migrate_drivers_3, migrate_drivers_4, migrate_drivers_5, migrate_drivers_6, migrate_drivers_7,
+                migrate_drivers_8, migrate_drivers_9, migrate_drivers_10, migrate_drivers_11, migrate_drivers_12, migrate_drivers_13, migrate_drivers_14, migrate_drivers_15,
+                migrate_drivers_16, migrate_drivers_17, migrate_drivers_18, migrate_drivers_19)%>%
+  drop_na()
+
+# Summarize the count of 1s for each variable
+summary_counts <- push_factors %>%
+  summarise_all(list(
+    count_1s = ~ sum(. == 1)))
+
+# Transform the summary_counts dataframe to have two columns: 'variables' and 'count'
+long_format <- summary_counts %>%
+  pivot_longer(cols = everything(), names_to = "variables", values_to = "count")
+
+###based on the long format, manually make a .csv file & replace the variable with the actual names. Compute the proportion per variable by dividing by 135. Read in the file afterwards
+
+#Read in 'push_factors_prop' data after manual preparation
+push_factors_prop <- read_csv("push_factors_prop.csv")
+
+
+
+
+# Define the colors for the three categories in 'factor'
+my_colors <- c("Macro" = "#bd0026", "Meso" = "#feb24c", "Micro" = "#ffffb2")
+
+
+# Create the bar plot with reordered y-axis
+p <- ggplot(push_factors_prop, aes(x = proportion, y = reorder(push_factor, -proportion), fill=factor)) +
+  geom_bar(stat = "identity", width = 0.4, colour = "black") +
+  labs(x = "proportion", y = "push_factor") +
+  theme_bw() +
+  theme(axis.title.y = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom",
+        legend.text = element_text(size = 13),
+        axis.text.y = element_text(size = 18, color = "black"),
+        axis.text.x = element_text(size = 13),
+        axis.title.x = element_text(size = 15)) + 
+  scale_x_continuous(name = "Proportion of migrated cohort (%)", 
+                     breaks = seq(0, 60, 5), limits = c(0, 60)) +
+  scale_fill_manual(values = my_colors) +
+  labs(fill = "")
+
+ggsave(filename= "push_plot.png", plot=p, height=6, width=9, units="in", device = "png", dpi=300)
+
+##save image 1000 x 650
+
+
+
+##19. Make bar-chart summarising the push factors driving intention to migrate
+
+#selects the variables that we need and drop the NAs
+intention_push_factors <- diamante %>% 
+  dplyr::select(intention_drivers, intention_drivers_1, intention_drivers_2, intention_drivers_3, intention_drivers_4, intention_drivers_5, intention_drivers_6, 
+                intention_drivers_7, intention_drivers_8, intention_drivers_9, intention_drivers_10, intention_drivers_11, intention_drivers_12, intention_drivers_13, 
+                intention_drivers_14, intention_drivers_15, intention_drivers_16, intention_drivers_17, intention_drivers_18, intention_drivers_19)%>%
+  drop_na()
+
+# Summarize the count of 1s for each variable
+summary_counts_intention <- intention_push_factors %>%
+  summarise_all(list(
+    count_1s = ~ sum(. == 1)))
+
+# Transform the summary_counts_intention dataframe to have two columns: 'variables' and 'count'
+long_format_intention <- summary_counts_intention %>%
+  pivot_longer(cols = everything(), names_to = "variables", values_to = "count")
+
+###based on the long format, manually make a .csv file & replace the variable with the actual names. Compute the proportion per variable by dividing by 135. Read in the file afterwards
+
+#Read in 'push_factors_prop' data after manual preparation
+intention_push_factors_prop <- read_csv("intention_push_factors_prop.csv")
+
+
+
+# Define the colors for the three categories in 'factor'
+my_colors <- c("Macro" = "#bd0026", "Meso" = "#feb24c", "Micro" = "#ffffb2")
+
+
+# Create the bar plot with reordered y-axis
+ggplot(intention_push_factors_prop, aes(x = proportion, y = reorder(push_factor, -proportion), fill=factor)) +
+  geom_bar(stat = "identity", width = 0.4, colour = "black") +
+  labs(x = "proportion", y = "push_factor") +
+  theme_bw() +
+  theme(axis.title.y = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom",
+        legend.text = element_text(size = 13),
+        axis.text.y = element_text(size = 18, color = "black"),
+        axis.text.x = element_text(size = 13),
+        axis.title.x = element_text(size = 15)) + 
+  scale_x_continuous(name = "Proportion of cohort with intention to migrate (%)", 
+                     breaks = seq(0, 90, 5), limits = c(0, 90)) +
+  scale_fill_manual(values = my_colors) +
+  labs(fill = "")
+
+##save image 1000 x 650
+
+
+
+##20. Make bar-chart summarising the pull factors driving migration
+
+#selects the variables that we need and drop the NAs
+pull_factors <- diamante %>% 
+  dplyr::select(migrate_drivers, destination_factors_1, destination_factors_2, destination_factors_3, destination_factors_4, destination_factors_5, destination_factors_6, 
+                destination_factors_7, destination_factors_8, destination_factors_9, destination_factors_10, destination_factors_11, destination_factors_12, destination_factors_13, 
+                destination_factors_14, destination_factors_15, destination_factors_16, destination_factors_17, destination_factors_18, destination_factors_19, destination_factors_20)%>%
+  drop_na()
+
+# Summarize the count of 1s for each variable
+summary_counts_pull <- pull_factors %>%
+  summarise_all(list(
+    count_1s = ~ sum(. == 1)))
+
+# Transform the summary_counts_intention dataframe to have two columns: 'variables' and 'count'
+long_format_pull <- summary_counts_pull %>%
+  pivot_longer(cols = everything(), names_to = "variables", values_to = "count")
+
+###based on the long format, manually make a .csv file & replace the variable with the actual names. Compute the proportion per variable by dividing by 135. Read in the file afterwards
+
+#Read in 'push_factors_prop' data after manual preparation
+pull_factors_prop <- read_csv("pull_factors_prop.csv")
+
+
+
+# Define the colors for the three categories in 'factor'
+my_colors <- c("Macro" = "#006837", "Meso" = "#78c679", "Micro" = "#ffffcc")
+
+
+# Create the bar plot with reordered y-axis
+p <- ggplot(pull_factors_prop, aes(x = proportion, y = reorder(push_factor, -proportion), fill=factor)) +
+  geom_bar(stat = "identity", width = 0.4, colour = "black") +
+  labs(x = "proportion", y = "push_factor") +
+  theme_bw() +
+  theme(axis.title.y = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom",
+        legend.text = element_text(size = 13),
+        axis.text.y = element_text(size = 18, color = "black"),
+        axis.text.x = element_text(size = 13),
+        axis.title.x = element_text(size = 15)) + 
+  scale_x_continuous(name = "Proportion of cohort who migrated (%)", 
+                     breaks = seq(0, 60, 5), limits = c(0, 60)) +
+  scale_fill_manual(values = my_colors) +
+  labs(fill = "")
+
+ggsave(filename= "pull_plot.png", plot=p, height=6, width=9, units="in", device = "png", dpi=300)
+
+##save image 1000 x 650
+
+
+
+##21. Compute the proportion of intention to migrate for total, then for degree type and sex
+
+#select the variables we need
+intention_migrate <- diamante %>% 
+  dplyr::select(sex, degree, migrate, intention_migrate)
+
+# Split the dataset based on the variable 'degree'
+intention_migrate_total <- intention_migrate[intention_migrate$migrate == "Yes", ] #Yes are people still in NIgeria and not migrated yet
+
+
+# Replace NAs in the 'intention_migrate' variable with "No"
+intention_migrate_total <- intention_migrate_total %>%
+  mutate(intention_migrate = replace_na(intention_migrate, "No"))
+
+# Count the frequency for each unique intention_migrate (TOTAL)
+intention_migrate_total_count <- intention_migrate_total %>%
+  group_by(intention_migrate) %>%
+  summarize(Count = n())
+
+# Count the frequency for each unique intention_migrate (by DRGREE)
+intention_migrate_degree_count <- intention_migrate_total %>%
+  group_by(intention_migrate, degree) %>%
+  summarize(Count = n())
+
+# Count the frequency for each unique intention_migrate (by SEX)
+intention_migrate_sex_count <- intention_migrate_total %>%
+  group_by(intention_migrate, sex) %>%
+  summarize(Count = n())
+
+
+##manually compute the prevalence based on the count of the Yes and No. denominator (i.e., non-migrated) Total = 139, Males = 94, Females = 45, MBBS = 112, and BDS = 27
+
+#####based on the proportions computed in 13. above, make a .CSV file 'fellowship_status' showing the proportions in each categories
+
+#read in the data for the fellowship status
+intention_migrate <- read.csv(paste0("intention_migrate.csv"), header=TRUE)
+
+
+# Convert 'category' to a factor with levels in the order they appear in the dataset
+intention_migrate <- intention_migrate %>%
+  mutate(category = factor(category, levels = unique(category)))
+
+
+# Define the colors for the three categories in 'factor'
+my_colors <- c("No intention to migrate" = "#9ac2b9", "Intention to migrate" = "#fc9272")
+
+# Create ggplot with the correct data frame
+ggplot(data = intention_migrate, aes(x = category, y = percent, fill = fill)) +
+  geom_bar(stat = "identity", width = 0.4, colour = "black") +
+  coord_flip()+
+  theme_bw()+
+  scale_fill_manual(values = my_colors)+
+  theme(axis.title.y = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom",
+        legend.text = element_text(size = 15),
+        axis.text.y = element_text(size = 18, color = "black"),
+        axis.text.x = element_text(size = 15),
+        axis.title.x = element_text(size = 15)) +
+  scale_y_continuous(name = "Proportion of non-migrated cohort (%)", 
+                     breaks = seq(0, 100, 10), limits = c(0, 100)) +
+  labs(fill = "")
+
+
+
+##compute and make chart of prevalence of migration 5, 10 and 15 years post graduation. Compute the outcome using data from 'incidence_rate_total.csv'
+
+# Sample data
+time_points <- c('5 years', '10 years', '15 years')
+prevalence <- c(13.2, 27, 48.9)  # Example prevalence values
+
+# Create a data frame from the sample data
+data <- data.frame(
+  Time = factor(time_points, levels = time_points),  # Ensure the order of time points
+  Prevalence = prevalence)
+
+# Create a bar chart using ggplot2
+ggplot(data, aes(x = Time, y = Prevalence)) +
+  geom_bar(stat = "identity", width = 0.2, colour = "black", fill = "#e34a33") +
+  labs(x = "Years Post-Qualification") +
+  geom_hline(yintercept = 0.0, linetype = "dashed", color = "grey", size = 0.7) +  # Add green dashed line at 13.2
+  geom_hline(yintercept = 13.2, linetype = "dashed", color = "grey", size = 0.7) +  # Add green dashed line at 13.2
+  geom_hline(yintercept = 27, linetype = "dashed", color = "grey", size = 0.7) +  # Add green dashed line at 27
+  geom_hline(yintercept = 48.9, linetype = "dashed", color = "grey", size = 0.7) +  # Add green dashed line at 48.9
+  theme_bw()+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        axis.text.y = element_text(size = 15, color = "black"),
+        axis.text.x = element_text(size = 15, color = "black"),
+        axis.title.x = element_text(size = 15),
+        axis.title.y = element_text(size = 15)) +
+  scale_y_continuous(name = "Prevalence of Migration (%)", 
+                     breaks = seq(0, 50, 5), limits = c(0, 50))
+
+#######################################################################################################################################################################################################################################
+##Run multiple logistic regression model to determine factors associated with migration
+
+##Select and Reclassify or recategorise variables needed for the analysis
+################################################################################################################################################################################################################################
+
+
+# 22a. selects the variables that we need for this analysis from the original data
+regression <- diamante %>% 
+  dplyr::select(migrate, degree, age, sex, married, yr_married, fm_size, dependents, commence_training, fellowship, fellow_type, fellow_status, fellow_yr, clinical_pract) 
+
+
+
+# 22b. create age categories using tertile cut points (i.e., equally divide the age into three equal categories)
+tertile_cuts <- quantile(regression$age, probs = c(0, 1/3, 2/3, 1))
+
+# Create the 'age_cat' variable using the cut points
+regression <- regression %>%
+  mutate(age_cat = cut(age, breaks = tertile_cuts, labels = c("Below mean (36 - 41)", "Mean (42 - 43)", "Above mean (44 - 60)"), include.lowest = TRUE))
+
+
+# 22c.  Create the 'age_cat2' variable based on the specified age ranges (36-40, 41-45, >45)
+regression <- regression %>%
+  mutate(age_cat2 = case_when(
+    age <= 40 ~ "40 or younger",
+    age >= 41 & age <= 45 ~ "41 to 45",
+    age > 45 ~ "46 or older"))
+
+# Convert 'age_cat2' to a factor for better handling and ordering
+regression <- regression %>%
+  mutate(age_cat2 = factor(age_cat2, levels = c("40 or younger", "41 to 45", "46 or older")))
+
+
+# 22d. Create the 'married_cat' variable based on the specified conditions
+regression <- regression %>%
+  mutate(married_cat = if_else(married == "Married", "Married", "Not Married"))
+
+
+# 22e. create 'yr-married_cat' based on tertile cut points (i.e., equally divide the year married into three equal categories)
+tertile_ym <- quantile(regression$yr_married, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE)
+
+# Create the 'yr_married_cat' variable using the cut points
+regression <- regression %>%
+  mutate(yr_married_cat = cut(yr_married, breaks = tertile_ym, labels = c("2011 or earlier", "2012 and 2013", "2014 or later"), include.lowest = TRUE))
+
+# Ensure that the NAs are preserved in the new variable
+regression$yr_married_cat <- factor(regression$yr_married_cat, levels = c("2011 or earlier", "2012 and 2013", "2014 or later", NA))
+
+
+# 22f.  Create the 'yr-married_cat2' variable based on the specified yr_married ranges (<=2008, 2009-2013, 2014-2018, 2019-2023)
+regression <- regression %>%
+  mutate(yr_married_cat2 = case_when(
+    yr_married <= 2008 ~ "2008 or earlier",
+    yr_married >= 2009 & yr_married <= 2013 ~ "2009 to 2013",
+    yr_married >= 2014 & yr_married <= 2018 ~ "2014 to 2018",
+    yr_married > 2018 ~ "2019 to 2023"))
+
+# Convert 'yr_married_cat2' to a factor for better handling and ordering
+regression <- regression %>%
+  mutate(yr_married_cat2 = factor(yr_married_cat2, levels = c("2008 or earlier", "2009 to 2013", "2014 to 2018", "2019 to 2023")))
+
+
+
+# 22g. create 'fm_size_cat' based on tertile cut points (i.e., equally divide the family size into three equal categories)
+tertile_fm_size <- quantile(regression$fm_size, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE)
+
+# Create the 'yr_married_cat' variable using the cut points
+regression <- regression %>%
+  mutate(fm_size_cat = cut(fm_size, breaks = tertile_fm_size, labels = c("4 or less", "5 children", "6 or more"), include.lowest = TRUE))
+
+# Ensure that the NAs are preserved in the new variable
+regression$fm_size_cat <- factor(regression$fm_size_cat, levels = c("4 or less", "5 children", "6 or more", NA))
+
+
+
+# 22h. Create the 'dependents_cat' variable based on the specified dependents ranges
+regression <- regression %>%
+  mutate(dependents_cat = case_when(
+    dependents <= 1 ~ "0 to 1 dependents",
+    dependents == 2 | dependents == 3 ~ "2 to 3 dependents",
+    dependents > 3 ~ "4 or more dependents",
+    TRUE ~ NA_character_  # To handle any unexpected values
+  ))
+
+# Convert 'dependents_cat' to a factor for better handling and ordering
+regression <- regression %>%
+  mutate(dependents_cat = factor(dependents_cat, levels = c("0 to 1 dependents", "2 to 3 dependents", "4 or more dependents")))
+
+
+# 22i. Create the 'fellow_type_cat' variable based on the specified categories, maintaining NAs
+regression <- regression %>%
+  mutate(fellow_type_cat = case_when(
+    is.na(fellow_type) ~ NA_character_,
+    fellow_type %in% c("Family Medicine", "Obstetrics and Gynecology", "Internal Medicine", 
+                       "Pediatrics", "Anaesthesia/Critical care") ~ fellow_type,
+    TRUE ~ "Others"
+  ))
+
+
+# 22j. create 'fellow_yr_cat' based on tertile cut points (i.e., equally divide the fellow_yr into three equal categories)
+tertile_fellow_yr <- quantile(regression$fellow_yr, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE)
+
+# Create the 'fellow_yr_cat' variable using the cut points
+regression <- regression %>%
+  mutate(fellow_yr_cat = cut(fellow_yr, breaks = tertile_fellow_yr, labels = c("2010 to 2012", "2013 to 2016", "2017 or later"), include.lowest = TRUE))
+
+# Ensure that the NAs are preserved in the new variable
+regression$fellow_yr_cat <- factor(regression$fellow_yr_cat, levels = c("2010 to 2012", "2013 to 2016", "2017 or later", NA))
+
+#########################################################################################################################################################################################################################################
+
+# Replace NAs where they shouldnt occur and convert migrate to 1s and 0s
+##########################################################################################################################################################################################################################################
+
+# Assign '4 or less' to the values with NA in the fm_size_cat variable
+regression <- regression %>%
+  mutate(fm_size_cat = ifelse(is.na(fm_size_cat), "4 or less", fm_size_cat))
+
+# Assign '0 to 1 dependents' to the values with NA in the dependents_cat variable
+regression <- regression %>%
+  mutate(dependents_cat = ifelse(is.na(dependents_cat), "0 to 1 dependents", dependents_cat))
+
+
+# Create the new variable 'migrate_cat'
+regression <- regression %>%
+  mutate(migrate_cat = ifelse(migrate == "Yes", 0, 1))
+
+
+##############################################################################################################################################################################################################################
+
+#select variables needed for the logistic regression model
+regression_subset <- regression %>%
+  dplyr::select(migrate_cat, degree, sex, age_cat, fm_size_cat, dependents_cat, clinical_pract, commence_training, married_cat, yr_married_cat, fellowship, fellow_status,
+                fellow_type_cat, fellow_yr_cat)
+
+###################################################################################################################################################################################################################################
+
+# Ensure all the variables are factors
+regression_subset <- regression_subset %>%
+  mutate(
+    migrate_cat = factor(migrate_cat),
+    degree = factor(degree),
+    sex = factor(sex),
+    fm_size_cat = factor(fm_size_cat),
+    dependents_cat = factor(dependents_cat),
+    clinical_pract = factor(clinical_pract),
+    commence_training = factor(commence_training),
+    married_cat = factor(married_cat),
+    fellowship = factor(fellowship),
+    fellow_status = factor(fellow_status),
+    fellow_type_cat = factor(fellow_type_cat),
+    fellow_yr_cat = factor(fellow_yr_cat),
+    age_cat = factor(age_cat),
+    yr_married_cat = factor(yr_married_cat))
+
+#Re-level all the covariates to indicate which will be the reference category
+regression_subset$degree <- relevel(regression_subset$degree, ref = "Bachelor of Dental Surgery (BDS)")
+regression_subset$sex <- relevel(regression_subset$sex, ref = "Female")
+regression_subset$fm_size_cat <- relevel(regression_subset$fm_size_cat, ref = "6 or more")
+regression_subset$dependents_cat <- relevel(regression_subset$dependents_cat, ref = "4 or more dependents")
+regression_subset$clinical_pract <- relevel(regression_subset$clinical_pract, ref = "No")
+regression_subset$commence_training <- relevel(regression_subset$commence_training, ref = "No")
+regression_subset$married_cat <- relevel(regression_subset$married_cat, ref = "Married")
+regression_subset$fellowship <- relevel(regression_subset$fellowship, ref = "0")
+regression_subset$fellow_status <- relevel(regression_subset$fellow_status, ref = "Currently in training")
+regression_subset$fellow_type_cat <- relevel(regression_subset$fellow_type_cat, ref = "Others")
+regression_subset$fellow_yr_cat <- relevel(regression_subset$fellow_yr_cat, ref = "2010 to 2012")
+regression_subset$age_cat <- relevel(regression_subset$age_cat, ref = "Above mean (44 - 60)")
+regression_subset$yr_married_cat <- relevel(regression_subset$yr_married_cat, ref = "2011 or earlier")
+
+# Verify the changes
+str(regression_subset)
+
+##############################################################################################################
+##create chi-square to examine all the variables
+#############################################################################################################
+
+# 1. Contingency table for degree vs. migrate_cat
+ct_degree <- CrossTable(regression_subset$degree, regression_subset$migrate_cat, 
+                        chisq = TRUE, expected = TRUE, sresid = FALSE,
+                        prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, prop.chisq = FALSE,
+                        format = "SPSS")
+
+# 2. Contingency table for sex vs. migrate_cat
+ct_degree <- CrossTable(regression_subset$sex, regression_subset$migrate_cat, 
+                        chisq = TRUE, expected = TRUE, sresid = FALSE,
+                        prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, prop.chisq = FALSE,
+                        format = "SPSS")
+
+# 3. Contingency table for age vs. migrate_cat
+ct_degree <- CrossTable(regression_subset$age_cat, regression_subset$migrate_cat, 
+                        chisq = TRUE, expected = TRUE, sresid = FALSE,
+                        prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, prop.chisq = FALSE,
+                        format = "SPSS")
+
+# 4. Contingency table for family size vs. migrate_cat
+ct_degree <- CrossTable(regression_subset$fm_size_cat, regression_subset$migrate_cat, 
+                        chisq = TRUE, expected = TRUE, sresid = FALSE,
+                        prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, prop.chisq = FALSE,
+                        format = "SPSS")
+
+# 5. Contingency table for dependents vs. migrate_cat
+ct_degree <- CrossTable(regression_subset$dependents_cat, regression_subset$migrate_cat, 
+                        chisq = TRUE, expected = TRUE, sresid = FALSE,
+                        prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, prop.chisq = FALSE,
+                        format = "SPSS")
+
+# 6. Contingency table for dependents vs. migrate_cat
+ct_degree <- CrossTable(regression_subset$clinical_pract, regression_subset$migrate_cat, 
+                        chisq = TRUE, expected = TRUE, sresid = FALSE,
+                        prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, prop.chisq = FALSE,
+                        format = "SPSS")
+
+# 7. Contingency table for dependents vs. migrate_cat
+ct_degree <- CrossTable(regression_subset$commence_training, regression_subset$migrate_cat, 
+                        chisq = TRUE, expected = TRUE, sresid = FALSE,
+                        prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, prop.chisq = FALSE,
+                        format = "SPSS")
+
+
+# 8. Contingency table for dependents vs. migrate_cat
+ct_degree <- CrossTable(regression_subset$married_cat, regression_subset$migrate_cat, 
+                        chisq = TRUE, expected = TRUE, sresid = FALSE,
+                        prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, prop.chisq = FALSE,
+                        format = "SPSS")
+
+
+# 9. Contingency table for dependents vs. migrate_cat
+ct_degree <- CrossTable(regression_subset$yr_married_cat, regression_subset$migrate_cat, 
+                        chisq = TRUE, expected = TRUE, sresid = FALSE,
+                        prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, prop.chisq = FALSE,
+                        format = "SPSS")
+
+
+# 10. Contingency table for dependents vs. migrate_cat
+ct_degree <- CrossTable(regression_subset$fellowship, regression_subset$migrate_cat, 
+                        chisq = TRUE, expected = TRUE, sresid = FALSE,
+                        prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, prop.chisq = FALSE,
+                        format = "SPSS")
+
+
+# 11. Contingency table for dependents vs. migrate_cat
+ct_degree <- CrossTable(regression_subset$fellow_status, regression_subset$migrate_cat, 
+                        chisq = TRUE, expected = TRUE, sresid = FALSE,
+                        prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, prop.chisq = FALSE,
+                        format = "SPSS")
+
+
+# 12. Contingency table for dependents vs. migrate_cat
+ct_degree <- CrossTable(regression_subset$fellow_type_cat, regression_subset$migrate_cat, 
+                        chisq = TRUE, expected = TRUE, sresid = FALSE,
+                        prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, prop.chisq = FALSE,
+                        format = "SPSS")
+
+
+# 13. Contingency table for dependents vs. migrate_cat
+ct_degree <- CrossTable(regression_subset$fellow_yr_cat, regression_subset$migrate_cat, 
+                        chisq = TRUE, expected = TRUE, sresid = FALSE,
+                        prop.c = FALSE, prop.r = TRUE, prop.t = FALSE, prop.chisq = FALSE,
+                        format = "SPSS")
+
+#####################################################################################################################################################################################
+##run single (bivariate) logistic regression model (i.e., unadjusted model)
+####################################################################################################################################################################################
+
+#Names of covariates
+covnames <- names(regression_subset)[c(2:14)]
+
+
+
+#Logistic regression
+logmod.out <- data.frame(Covariate = character(), min.pvalue = character())
+logmod.out.OR <- data.frame()
+
+for (i in 1:length(covnames)){
+  print(i)
+  form <- paste("migrate_cat", "~", covnames[i])
+  log.mod <- glm(form, data = regression_subset, family="binomial")
+  print(summary(log.mod))
+  print(exp(cbind(OR = coef(log.mod), confint(log.mod))))
+  ll <- exp(cbind(OR = coef(log.mod), confint(log.mod)))
+  logmod.out.OR <- rbind(logmod.out.OR, ll)
+  sig <- "no"
+  if (min(summary(log.mod)$coefficients[-1,4]) < 0.05) sig <- "yes"
+  logmod.out[i,] <- c(covnames[i], sig)
+}
+
+logmod.out 
+logmod.out.OR
+
+write.csv(logmod.out.OR, "unadjustedOR_migrated.csv")
+
+###########################################################################################################################################################################
+##Make plots for unadjusted OR. Read in file after manually editing them to spec.
+##########################################################################################################################################################################
+
+### read data into R
+dat <- read.csv("unadjustedOR_migrated_edited.csv", header = TRUE)
+
+head(dat)
+dat$Variable1 <- factor(dat$variable, levels = dat$variable[1:23])
+ind1 <- which(dat$lower>1|dat$upper<1)
+dat$ind <- rep(0, nrow(dat))
+dat$ind[ind1] <- 1
+
+p <- ggplot(dat, aes(x = mean, y = Variable1)) +
+  geom_point(stat = "identity", shape = 15) +
+  geom_errorbar(aes(xmin = lower, xmax = upper), width = 0.3, size = 0.4) +
+  geom_point(stat = "identity", data = dat[dat$ind == 1, ], colour = "#c72b23") +
+  geom_errorbar(aes(xmin = lower, xmax = upper), width = 0.3, size = 0.4, colour = "#c72b23", data = dat[dat$ind == 1, ]) +
+  xlab("Unadjusted odds ratio and 95% confidence intervals") +
+  ylab("") +
+  xlim(-0.2, NA) +
+  ggtitle("Bivariate analysis of factors associated with out-migration") +
+  theme_bw() +
+  geom_vline(xintercept = 1.0, linetype = "dashed", colour = "red") +
+  theme(strip.text.x = element_text(size = 10, face = "bold"),
+        axis.text.x = element_text(size = 14, color = "black"),
+        plot.title = element_text(size = 12, face = "bold"),
+        axis.text.y = element_text(size = 14, color = "black"),
+        axis.title.x = element_text(size = 14, color = "black"),
+        legend.title = element_text(size = 13),
+        legend.text = element_text(size = 13))+
+  scale_x_continuous(breaks = seq(0, max(dat$upper, na.rm = TRUE), by = 2))
+
+ggsave(filename= "unadjusted_migrated_plot.png", plot=p, height=12, width=9, units="in", device = "png", dpi=300)
+
+##################################################################################################################################################
+## fit adjusted logistic regression model
+################################################################################################################################################
+
+
+# Create indicator variables for missing values
+regression_subset1 <- regression_subset %>%
+  mutate(married_cat = ifelse(is.na(yr_married_cat), "Not Married", married_cat),
+         fellowship = ifelse(is.na(fellow_status) & is.na(fellow_type_cat) & is.na(fellow_yr_cat), "Did Not", fellowship))
+
+# Perform multiple imputation
+imp <- mice(regression_subset1, m = 5, method = "pmm")  # Predictive mean matching
+
+# Fit logistic regression models on each imputed dataset
+models <- with(imp, glm(migrate_cat ~ degree + sex + age_cat + fm_size_cat + dependents_cat + 
+                          clinical_pract + commence_training + married_cat + yr_married_cat + 
+                          fellowship + fellow_status + fellow_type_cat + fellow_yr_cat, 
+                        family = binomial))
+
+
+
+
+# Pool the results with confidence intervals
+summary_pool <- pool(models)
+
+
+# View pooled results
+summary(summary_pool)
+
+# Calculate lower and upper confidence intervals
+summary_pool <- summary(summary_pool)
+summary_pool <- summary_pool %>%
+  mutate(
+    OR = exp(estimate),
+    lower = exp(estimate - 1.96 * std.error),  # 95% CI lower bound
+    upper = exp(estimate + 1.96 * std.error)   # 95% CI upper bound
+  )
+
+# View results
+summary_pool
+
+write.csv(summary_pool, "adjustedOR_migrated.csv")
+
+##################################################################################################################################################################################################################
+##Evaluate Model and plot RIC##
+#########################################################################################################################################################################################################################
+
+
+# Combine the imputed datasets and obtain predictions
+complete_data <- complete(imp, "long", include = TRUE)
+predictions <- predict(pooled_models, newdata = complete_data, type = "response")
+
+# Evaluate the model with ROC and AUC
+roc_curve <- roc(complete_data$migrate_cat, predictions)
+auc_value <- auc(roc_curve)
+
+# Print AUC value
+print(paste("AUC:", auc_value))
+
+# Plot the ROC curve
+ggroc(roc_curve) +
+  ggtitle(paste("ROC Curve (AUC =", round(auc_value, 2), ")")) +
+  theme_minimal() +
+  xlab("1 - Specificity") +
+  ylab("Sensitivity")
+
+# Display the plot
+print(ggroc(roc_curve) +
+        ggtitle(paste("ROC Curve (AUC =", round(auc_value, 2), ")")) +
+        theme_minimal() +
+        xlab("1 - Specificity") +
+        ylab("Sensitivity"))
+
+
+
+####################################################################################################################################################################################################################################
+##Make plots for adjusted OR for the main model output. Read in file after manually editing them to spec.
+####################################################################################################################################################################################################################################
+
+### read data into R
+dat <- read.csv("adjustedOR_migrated_edited.csv", header = TRUE)
+
+head(dat)
+dat$Variable1 <- factor(dat$variable, levels = dat$variable[1:23])
+ind1 <- which(dat$lower>1|dat$upper<1)
+dat$ind <- rep(0, nrow(dat))
+dat$ind[ind1] <- 1
+
+p <- ggplot(dat, aes(x = mean, y = Variable1)) +
+  geom_point(stat = "identity", shape = 15) +
+  geom_errorbar(aes(xmin = lower, xmax = upper), width = 0.3, size = 0.4) +
+  geom_point(stat = "identity", data = dat[dat$ind == 1, ], colour = "#c72b23") +
+  geom_errorbar(aes(xmin = lower, xmax = upper), width = 0.3, size = 0.4, colour = "#c72b23", data = dat[dat$ind == 1, ]) +
+  xlab("Adjusted Odds Ratio and 95% CIs") +
+  ylab("") +
+  xlim(-0.2, NA) +
+  theme_bw() +
+  geom_vline(xintercept = 1.0, linetype = "dashed", colour = "red") +
+  theme(strip.text.x = element_text(size = 10, face = "bold"),
+        axis.text.x = element_text(size = 14, color = "black", angle = 45, hjust = 1),
+        plot.title = element_text(size = 12, face = "bold"),
+        axis.text.y = element_text(size = 18, color = "black"),
+        axis.title.x = element_text(size = 15, color = "black"),
+        legend.title = element_text(size = 13),
+        legend.text = element_text(size = 13))+
+  scale_x_continuous(breaks = seq(0, max(dat$upper, na.rm = TRUE), by = 2))
+
+ggsave(filename= "adjusted_migrated_plot.png", plot=p, height=12, width=9, units="in", device = "png", dpi=300)
+
